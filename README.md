@@ -51,7 +51,7 @@ Server starts at `http://localhost:8000`
 │       ├── audio.js        # Audio system
 │       ├── graphics.js     # Rendering pipeline
 │       ├── events.js       # Input events handling
-│       ├── fetch.js        # Network requests proxy
+│       ├── fetch.js        # Network requests (Real-time asset streaming)
 │       ├── syscalls.js     # System calls
 │       ├── main.js         # Main entry point
 │       ├── cheats.js       # Cheat engine (F3)
