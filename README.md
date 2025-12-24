@@ -4,7 +4,7 @@ Web-based port of GTA: Vice City running in browser via WebAssembly.
 
 ## Requirements
 
-- Python 3.8+ or PHP 8.0+
+- Docker or Python 3.8+ or PHP 8.0+
 - Dependencies from `requirements.txt`
 
 ## Setup & Running
