@@ -48,7 +48,7 @@ let haveOriginalGame = false;
             downloading: "Downloading",
             enterKey: "enter your key",
             clickToContinue: "Click to continue...",
-            enterJsDosKey: "Enter js-dos key",
+            enterJsDosKey: "Enter js-dos key (5 len)",
             portBy: "HTML5 port by:",
             ruTranslate: "",
             demoOffDisclaimer: "Due to the unexpectedly high popularity of the project, resulting in significant traffic costs, and in order to avoid any risk of the project being shut down due to rights holder claims, we have disabled the demo version. You can still run the full version by providing the original game resources.",
@@ -71,7 +71,7 @@ let haveOriginalGame = false;
             downloading: "Загрузка",
             enterKey: "введите ваш ключ",
             clickToContinue: "Нажмите для продолжения...",
-            enterJsDosKey: "Введите ключ js-dos",
+            enterJsDosKey: "Введите ключ js-dos (5 букв)",
             portBy: "Авторы HTML5 порта:",
             ruTranslate: `
 <div class="translated-by">

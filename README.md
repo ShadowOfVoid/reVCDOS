@@ -20,6 +20,26 @@ The easiest way to get started is using Docker Compose:
 docker compose up -d --build
 ```
 
+To configure server options via environment variables:
+
+```bash
+# Set port, enable auth and custom saves
+IN_PORT=3000 AUTH_LOGIN=admin AUTH_PASSWORD=secret CUSTOM_SAVES=1 docker compose up -d --build
+```
+
+| Environment Variable | Description |
+|---------------------|-------------|
+| `OUT_HOST` | External host (default: 0.0.0.0) |
+| `OUT_PORT` | External port (default: 8000) |
+| `IN_PORT` | Internal container port (default: 8000) |
+| `AUTH_LOGIN` | HTTP Basic Auth username |
+| `AUTH_PASSWORD` | HTTP Basic Auth password |
+| `CUSTOM_SAVES` | Enable local saves (set to `1`) |
+| `VCSKY_LOCAL` | Serve vcsky from local directory (set to `1`) |
+| `VCBR_LOCAL` | Serve vcbr from local directory (set to `1`) |
+| `VCSKY_URL` | Custom vcsky proxy URL |
+| `VCBR_URL` | Custom vcbr proxy URL |
+
 ### Option 2: Local Installation
 
 1. Install Python dependencies:
@@ -38,6 +58,43 @@ Server starts at `http://localhost:8000`
 
 If you want to run the game from a hosted environment with `PHP 8.0` or above, just copy the contents of this repo to your desired hosting
 By default the `index.php` and `.htaccess` will get the job done. 
+## Server Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `--port` | int | 8000 | Server port |
+| `--custom_saves` | flag | disabled | Enable local save files (saves router) |
+| `--login` | string | none | HTTP Basic Auth username |
+| `--password` | string | none | HTTP Basic Auth password |
+| `--vcsky_local` | flag | disabled | Serve vcsky from local `vcsky/` directory |
+| `--vcbr_local` | flag | disabled | Serve vcbr from local `vcbr/` directory |
+| `--vcsky_url` | string | `https://cdn.dos.zone/vcsky/` | Custom vcsky proxy URL |
+| `--vcbr_url` | string | `https://br.cdn.dos.zone/vcsky/` | Custom vcbr proxy URL |
+
+**Examples:**
+```bash
+# Start on custom port
+python server.py --port 3000
+
+# Enable local saves
+python server.py --custom_saves
+
+# Enable HTTP Basic Authentication
+python server.py --login admin --password secret123
+
+# Use local vcsky and vcbr files (offline mode)
+python server.py --vcsky_local --vcbr_local
+
+# Use custom proxy URLs
+python server.py --vcsky_url https://my-cdn.example.com/vcsky/ --vcbr_url https://my-cdn.example.com/vcbr/
+
+# All options combined
+python server.py --port 3000 --custom_saves --login admin --password secret123 --vcsky_local --vcbr_local
+```
+
+> **Note:** HTTP Basic Auth is only enabled when both `--login` and `--password` are provided.
+
+> **Note:** By default, vcsky and vcbr are proxied from DOS Zone CDN. Use `--vcsky_local` and `--vcbr_local` flags to serve files from local directories instead.
 
 ## URL Parameters
 
@@ -58,6 +115,9 @@ By default the `index.php` and `.htaccess` will get the job done.
 ├── index.php           # php proxy server
 ├── .htaccess           # apache config for php
 ├── requirements.txt    # Python dependencies
+├── additions/          # Server extensions
+│   ├── auth.py         # HTTP Basic Auth middleware
+│   └── saves.py        # Local saves router
 ├── dist/               # Game client files
 │   ├── index.html      # Main page
 │   ├── game.js         # Game loader
@@ -65,6 +125,7 @@ By default the `index.php` and `.htaccess` will get the job done.
 │   ├── GamepadEmulator.js  # Touch controls
 │   ├── idbfs.js        # IndexedDB filesystem
 │   ├── jsdos-cloud-sdk.js  # Cloud saves (DOS Zone)
+│   ├── jsdos-cloud-sdk-local.js  # Local saves (--custom_saves)
 │   └── modules/        # WASM modules
 │       ├── runtime.js      # WASM runtime initialization
 │       ├── loader.js       # Asset/package loading
@@ -98,9 +159,16 @@ By default the `index.php` and `.htaccess` will get the job done.
 
 - 🎮 Gamepad emulation for touch devices
 - ☁️ Cloud saves via js-dos key
+- 💾 Local saves (with `--custom_saves` flag)
 - 🌍 English/Russian language support
 - 🔧 Built-in cheat engine (memory scanner, cheats)
 - 📱 Mobile touch controls
+
+## Local Saves
+
+When local saves are enabled (`--custom_saves` flag), enter any 5-character identifier in the "js-dos key" input field on the start page. This identifier will be used to store your saves in the `saves/` directory on the server.
+
+Example: Enter `mykey` or `12345` — saves will be stored as `mykey_vcsky.saves` or `12345_vcsky.saves`.
 
 ## Controls (Touch)
 
@@ -125,4 +193,8 @@ Do what you want. Not affiliated with Rockstar Games.
 
 **Russian translation:** [GamesVoice](https://www.gamesvoice.ru/)
 
-**Shared hosting by:** [Rohamgames](https://github.com/rohamgames)
+## Support me
+
+If you find this project useful:
+
+- **TON / USDT (TON)**  `UQAyBchGEKi9NnNQ3AKMQMuO-SGEhMIAKFAbkwwrsiOPj9Gy`

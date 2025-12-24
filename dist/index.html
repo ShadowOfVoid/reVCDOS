@@ -566,7 +566,7 @@
                 <span id="cloud-saves-status" class="jsdos-key-status">checking...</span>
             </div>
 
-            <input type="text" class="jsdos-key-input" placeholder="Enter js-dos key">
+            <input type="text" class="jsdos-key-input" placeholder="Enter js-dos key (5 len)">
         </div>
 
         <div class="disclaimer">
@@ -624,7 +624,13 @@
     </div>
 
     <script type='text/javascript' src="GamepadEmulator.js"></script>
-    <script type='text/javascript' src="jsdos-cloud-sdk.js"></script>
+    <script>
+        if (new URLSearchParams(window.location.search).get("custom_saves") === "1") {
+            document.write('<script src="jsdos-cloud-sdk-local.js"><\/script>');
+        } else {
+            document.write('<script src="jsdos-cloud-sdk.js"><\/script>');
+        }
+    </script>
     <script type='text/javascript' src="idbfs.js"></script>
     <script type='text/javascript' src="game.js"></script>
     <script>
