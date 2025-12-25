@@ -1,12 +1,11 @@
 import os
 import argparse
 from fastapi import FastAPI, Request, HTTPException
-from fastapi.responses import StreamingResponse, FileResponse, Response
+from fastapi.responses import Response
 from fastapi.staticfiles import StaticFiles
-from starlette.background import BackgroundTask
-import httpx
 import additions.saves as saves
 from additions.auth import BasicAuthMiddleware
+from additions.cache import proxy_and_cache, get_local_file
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--port", type=int, default=8000)
@@ -17,6 +16,8 @@ parser.add_argument("--vcsky_local", action="store_true", help="Serve vcsky from
 parser.add_argument("--vcbr_local", action="store_true", help="Serve vcbr from local directory instead of proxy")
 parser.add_argument("--vcsky_url", type=str, default="https://cdn.dos.zone/vcsky/", help="Custom vcsky proxy URL")
 parser.add_argument("--vcbr_url", type=str, default="https://br.cdn.dos.zone/vcsky/", help="Custom vcbr proxy URL")
+parser.add_argument("--vcsky_cache", action="store_true", help="Cache vcsky files locally. If files are not found in the local directory, they will be downloaded from the specified URL and saved to the local directory.")
+parser.add_argument("--vcbr_cache", action="store_true", help="Cache vcbr files locally. If files are not found in the local directory, they will be downloaded from the specified URL and saved to the local directory.")
 args = parser.parse_args()
 
 app = FastAPI()
@@ -37,62 +38,31 @@ def request_to_url(request: Request, path: str, base_url: str):
         url = f"{url}?{query_string}"
     return url
 
-async def _proxy_request(request: Request, url: str):
-    client = httpx.AsyncClient(timeout=None)
-    headers = {k: v for k, v in request.headers.items() if k.lower() not in ["host", "content-length"]}
-    
-    req = client.build_request(request.method, url, headers=headers)
-    r = await client.send(req, stream=True)
-    
-    excluded_headers = {"content-length", "transfer-encoding", "connection", "keep-alive", "upgrade", "content-encoding", "x-content-encoding"}
-    response_headers = {k: v for k, v in r.headers.items() if k.lower() not in excluded_headers}
-    
-    response_headers["Cross-Origin-Opener-Policy"] = "same-origin"
-    response_headers["Cross-Origin-Embedder-Policy"] = "require-corp"
-
-    return StreamingResponse(
-        r.aiter_bytes(),
-        status_code=r.status_code,
-        headers=response_headers,
-        background=BackgroundTask(client.aclose)
-    )
-
 # vcsky routes - either local or proxy
-if args.vcsky_local:
-    app.mount("/vcsky", StaticFiles(directory="vcsky"), name="vcsky")
-else:
-    @app.api_route("/vcsky/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-    async def vc_sky_proxy(request: Request, path: str):
-        return await _proxy_request(request, request_to_url(request, path, VCSKY_BASE_URL))
+@app.api_route("/vcsky/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def vc_sky_proxy(request: Request, path: str):
+    local_path = os.path.join("vcsky", path)
+    if args.vcsky_local:
+        if response := get_local_file(local_path, request):
+            return response
+        raise HTTPException(status_code=404, detail="File not found")
+    url = request_to_url(request, path, VCSKY_BASE_URL)
+    if args.vcsky_cache:
+        return await proxy_and_cache(request, url, local_path)
+    return await proxy_and_cache(request, url, disable_cache=True)
 
 # vcbr routes - either local or proxy
-if args.vcbr_local:
-    @app.get("/vcbr/{file_path:path}")
-    async def serve_vcbr_local(file_path: str):
-        file_location = os.path.join("vcbr", file_path)
-        if not os.path.isfile(file_location):
-            raise HTTPException(status_code=404, detail="File not found")
-        
-        headers = {
-            "Cross-Origin-Opener-Policy": "same-origin",
-            "Cross-Origin-Embedder-Policy": "require-corp"
-        }
-        
-        media_type = "application/octet-stream"
-        if file_path.endswith(".wasm.br"):
-            media_type = "application/wasm"
-            headers["Content-Encoding"] = "br"
-        elif file_path.endswith(".data.br"):
-            media_type = "application/octet-stream"
-            headers["Content-Encoding"] = "br"
-        elif file_path.endswith(".wasm"):
-            media_type = "application/wasm"
-        
-        return FileResponse(file_location, media_type=media_type, headers=headers)
-else:
-    @app.api_route("/vcbr/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
-    async def vc_br_proxy(request: Request, path: str):
-        return await _proxy_request(request, request_to_url(request, path, VCBR_BASE_URL))
+@app.api_route("/vcbr/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"])
+async def vc_br_proxy(request: Request, path: str):
+    local_path = os.path.join("vcbr", path)
+    if args.vcbr_local:
+        if response := get_local_file(local_path, request):
+            return response
+        raise HTTPException(status_code=404, detail="File not found")
+    url = request_to_url(request, path, VCBR_BASE_URL)
+    if args.vcbr_cache:
+        return await proxy_and_cache(request, url, local_path)
+    return await proxy_and_cache(request, url, disable_cache=True)
 
 @app.get("/")
 async def read_index():
@@ -115,9 +85,12 @@ async def read_index():
 
 app.mount("/", StaticFiles(directory="dist"), name="root")
 
-if __name__ == "__main__":
+def start_server(app=app, host="0.0.0.0", port=args.port):
     import uvicorn
+    uvicorn.run(app, host=host, port=port)
+
+if __name__ == "__main__":
     print(f"Starting server on http://localhost:{args.port}")
     print(f"vcsky: {'local' if args.vcsky_local else 'proxy'} ({VCSKY_BASE_URL if not args.vcsky_local else 'vcsky/'})")
     print(f"vcbr: {'local' if args.vcbr_local else 'proxy'} ({VCBR_BASE_URL if not args.vcbr_local else 'vcbr/'})")
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+    start_server()

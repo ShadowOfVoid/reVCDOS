@@ -4,9 +4,27 @@ Web-based port of GTA: Vice City running in browser via WebAssembly.
 
 ## Requirements
 
-- Python 3.8+
+- Docker or Python 3.8+ or PHP 8.0+
 - Dependencies from `requirements.txt`
 
+## Quick Start
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/Lolendor/reVCDOS.git
+    cd reVCDOS
+    ```
+
+2. **Configure Assets** (Optional):
+
+   By default, the project uses the **DOS Zone CDN**. For local hosting, download and place assets in [(see structure)](#project-structure):
+    *   **Resources:** `vcsky/fetched/` (or `fetched-ru/`) — `data`, `audio`, `anim`, `models` folders.
+    *   **Binaries:** `vcbr/` — `.wasm.br` and `.data.br` files for your chosen language.
+4. **Launch the Application**:
+   Choose one of the setup methods below:
+   * **Docker** (Recommended for most users) — fast and isolated.
+   * **PHP** — Simply upload the folder to your web server (FTP/Hosting).
+   * **Manual Installation** — for development and customization.
 
 ## Setup & Running
 
@@ -14,7 +32,7 @@ Web-based port of GTA: Vice City running in browser via WebAssembly.
 The easiest way to get started is using Docker Compose:
 
 ```bash
-docker compose up -d --build
+VCSKY_CACHE=1 VCBR_CACHE=1 docker compose up -d --build
 ```
 
 To configure server options via environment variables:
@@ -36,6 +54,8 @@ IN_PORT=3000 AUTH_LOGIN=admin AUTH_PASSWORD=secret CUSTOM_SAVES=1 docker compose
 | `VCBR_LOCAL` | Serve vcbr from local directory (set to `1`) |
 | `VCSKY_URL` | Custom vcsky proxy URL |
 | `VCBR_URL` | Custom vcbr proxy URL |
+| `VCSKY_CACHE` | Cache vcsky files locally while proxying (set to `1`) |
+| `VCBR_CACHE` | Cache vcbr files locally while proxying (set to `1`) |
 
 ### Option 2: Local Installation
 
@@ -46,11 +66,15 @@ pip install -r requirements.txt
 
 2. Start the server:
 ```bash
-python server.py
+python server.py --vcsky_cache --vcbr_cache
 ```
 
 Server starts at `http://localhost:8000`
 
+### Option 3: Shared Hosting on PHP (No installation)
+
+If you want to run the game from a hosted environment with `PHP 8.0` or above, just copy the contents of this repo to your desired hosting
+By default the `index.php` and `.htaccess` will get the job done. 
 ## Server Options
 
 | Option | Type | Default | Description |
@@ -63,6 +87,8 @@ Server starts at `http://localhost:8000`
 | `--vcbr_local` | flag | disabled | Serve vcbr from local `vcbr/` directory |
 | `--vcsky_url` | string | `https://cdn.dos.zone/vcsky/` | Custom vcsky proxy URL |
 | `--vcbr_url` | string | `https://br.cdn.dos.zone/vcsky/` | Custom vcbr proxy URL |
+| `--vcsky_cache` | flag | disabled | Cache vcsky files locally while proxying |
+| `--vcbr_cache` | flag | disabled | Cache vcbr files locally while proxying |
 
 **Examples:**
 ```bash
@@ -75,11 +101,14 @@ python server.py --custom_saves
 # Enable HTTP Basic Authentication
 python server.py --login admin --password secret123
 
-# Use local vcsky and vcbr files (offline mode)
+# Use local vcsky and vcbr files (fully offline mode)
 python server.py --vcsky_local --vcbr_local
 
 # Use custom proxy URLs
 python server.py --vcsky_url https://my-cdn.example.com/vcsky/ --vcbr_url https://my-cdn.example.com/vcbr/
+
+# Cache files locally while proxying (hybrid mode) (recommended)
+python server.py --vcsky_cache --vcbr_cache
 
 # All options combined
 python server.py --port 3000 --custom_saves --login admin --password secret123 --vcsky_local --vcbr_local
@@ -89,12 +118,15 @@ python server.py --port 3000 --custom_saves --login admin --password secret123 -
 
 > **Note:** By default, vcsky and vcbr are proxied from DOS Zone CDN. Use `--vcsky_local` and `--vcbr_local` flags to serve files from local directories instead.
 
+> **Note:** Use `--vcsky_cache` and `--vcbr_cache` to cache proxied files locally. Files are downloaded once and served from local storage on subsequent requests.
+
 ## URL Parameters
 
 | Parameter | Values | Description |
 |-----------|--------|-------------|
 | `lang` | `en`, `ru` | Game language |
 | `cheats` | `1` | Enable cheat menu (F3) |
+
 
 **Examples:**
 - `http://localhost:8000/?lang=ru` — Russian version
@@ -104,9 +136,12 @@ python server.py --port 3000 --custom_saves --login admin --password secret123 -
 
 ```
 ├── server.py           # FastAPI proxy server
+├── index.php           # php proxy server
+├── .htaccess           # apache config for php
 ├── requirements.txt    # Python dependencies
 ├── additions/          # Server extensions
 │   ├── auth.py         # HTTP Basic Auth middleware
+│   ├── cache.py        # Proxy caching and brotli decompression
 │   └── saves.py        # Local saves router
 ├── dist/               # Game client files
 │   ├── index.html      # Main page
@@ -138,11 +173,16 @@ python server.py --port 3000 --custom_saves --login admin --password secret123 -
 │   ├── vc-sky-en-v6.wasm.br
 │   ├── vc-sky-ru-v6.data.br
 │   └── vc-sky-ru-v6.wasm.br
-└── vcsky/              # Additional assets (optional)
-    ├── data/
-    ├── audio/
-    ├── models/
-    └── anim/
+└── vcsky/                 # Decompressed assets (optional)
+    ├── fetched/           # English version files
+    │   ├── data/
+    │   ├── audio/
+    │   ├── models/
+    │   └── anim/
+    └── fetched-ru/        # Russian version files
+        ├── data/
+        ├── audio/
+        └── ...
 ```
 
 ## Features
@@ -183,7 +223,10 @@ Do what you want. Not affiliated with Rockstar Games.
 
 **Russian translation:** [GamesVoice](https://www.gamesvoice.ru/)
 
-## Support me
+**Added by the community:**
+* PHP Support by [Rohamgames](https://github.com/Rohamgames)
+
+## Support [me](https://github.com/Lolendor)
 
 If you find this project useful:
 
